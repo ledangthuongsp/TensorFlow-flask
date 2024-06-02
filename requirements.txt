@@ -1,5 +1,0 @@
-flask
-tensorflow
-tensorflowjs
-numpy
-pillow

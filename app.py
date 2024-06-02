@@ -1,31 +1,67 @@
 from flask import Flask, request, jsonify
-import tensorflowjs as tfjs
-import numpy as np
+import requests
+import logging
+from werkzeug.utils import secure_filename
+from inference_sdk import InferenceHTTPClient
 from PIL import Image
 import io
+import os
+import tempfile
 
 app = Flask(__name__)
+logging.basicConfig(level=logging.INFO)
 
-# Load the TensorFlow.js model
-model = tfjs.converters.load_keras_model('model/model.json')
+# Initialize Roboflow client
+CLIENT = InferenceHTTPClient(
+    api_url="https://detect.roboflow.com",
+    api_key="QWEjrGQxLc7LJu13VuzO"
+)
 
-def preprocess_image(image):
-    img = Image.open(io.BytesIO(image)).resize((224, 224))
-    img = np.array(img) / 255.0
-    img = np.expand_dims(img, axis=0)
-    return img
+@app.route('/')
+def hello_world():
+    return jsonify({'message': 'Hello World!'})
 
-@app.route('/predict', methods=['POST'])
-def predict():
-    if 'file' not in request.files:
-        return jsonify({'error': 'No file provided'}), 400
+@app.route('/detect', methods=['POST'])
+def detect_objects():
+    try:
+        logging.info("Received a request to /detect")
 
-    file = request.files['file']
-    image = file.read()
-    processed_image = preprocess_image(image)
+        if 'file' not in request.files:
+            logging.error("No file part in the request")
+            return jsonify({'error': 'No file part in the request'}), 400
+        
+        file = request.files['file']
+        if file.filename == '':
+            logging.error("No selected file")
+            return jsonify({'error': 'No selected file'}), 400
+        
+        filename = secure_filename(file.filename)
+        file_content = file.read()
 
-    prediction = model.predict(processed_image)
-    return jsonify({'prediction': prediction.tolist()})
+        # Validate if the file is a valid image
+        try:
+            image = Image.open(io.BytesIO(file_content))
+            image.verify()  # Verify that it is, in fact, an image
+        except Exception as e:
+            logging.error("Invalid image file")
+            return jsonify({'error': 'Invalid image file', 'details': str(e)}), 400
+
+        # Write the file content to a temporary file
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".jpg") as temp_file:
+            temp_file.write(file_content)
+            temp_file_path = temp_file.name
+
+        # Use InferenceHTTPClient to send the image to Roboflow
+        result = CLIENT.infer(temp_file_path, model_id="garbage-classification-3/2")
+
+        # Clean up the temporary file
+        os.remove(temp_file_path)
+
+        return jsonify(result)
+    except Exception as e:
+        logging.exception("Error in /detect")
+        return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':
-    app.run()
+    from waitress import serve
+    serve(app, host="0.0.0.0", port=5000)
