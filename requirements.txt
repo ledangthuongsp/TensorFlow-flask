@@ -1,0 +1,5 @@
+Flask
+requests
+pillow
+inference_sdk
+waitress
