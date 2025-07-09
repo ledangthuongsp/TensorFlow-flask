@@ -1,18 +1,30 @@
-from flask import Flask, request, jsonify
 import logging
+import os
+import torch
+from flask import Flask, request, jsonify
 from PIL import Image
 import io
-import torch
 from transformers import AutoImageProcessor, AutoModelForImageClassification
 
 # === Flask setup ===
 app = Flask(__name__)
 logging.basicConfig(level=logging.INFO)
 
-# === Load SigLIP2 model from Hugging Face ===
+# === Load model from Hugging Face ===
 MODEL_NAME = "prithivMLmods/Augmented-Waste-Classifier-SigLIP2"
-model = AutoModelForImageClassification.from_pretrained(MODEL_NAME)
-processor = AutoImageProcessor.from_pretrained(MODEL_NAME)
+model = None
+processor = None
+
+# Load the model and processor once when the app starts
+def load_model():
+    global model, processor
+    if model is None or processor is None:
+        logging.info("Loading model and processor...")
+        model = AutoModelForImageClassification.from_pretrained(MODEL_NAME)
+        processor = AutoImageProcessor.from_pretrained(MODEL_NAME)
+        logging.info("Model and processor loaded successfully.")
+
+load_model()
 
 # === Waste label mapping ===
 LABELS = {
@@ -65,5 +77,9 @@ def detect_waste_type():
         logging.exception("Error in /detect")
         return jsonify({'error': str(e)}), 500
 
-# if __name__ == '__main__':
-#     app.run()
+# Flask app will automatically listen on the PORT env variable set by Railway
+if __name__ == '__main__':
+    # Load model once before running the app
+    port = int(os.environ.get("PORT", 5000))  # Default to 5000 if PORT is not set
+    logging.info(f"Starting Flask app on port {port}")
+    app.run(host='0.0.0.0', port=port)

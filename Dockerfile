@@ -15,10 +15,7 @@ RUN pip install --upgrade pip
 # Copy requirements.txt vào container
 COPY requirements.txt ./
 
-# Cài đặt torch từ PyTorch's official wheels (CPU version)
-RUN pip install --no-cache-dir torch==2.3.0 -f https://download.pytorch.org/whl/cpu/torch_stable.html
-
-# Cài đặt các thư viện còn lại từ requirements.txt
+# Cài đặt các thư viện từ requirements.txt (bao gồm torch)
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy toàn bộ project vào container
