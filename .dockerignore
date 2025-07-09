@@ -5,3 +5,4 @@ __pycache__
 *.json
 *.yml
 tests/
+node_modules/

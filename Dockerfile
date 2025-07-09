@@ -1,24 +1,16 @@
-# Bước 1: Build image
-FROM python:3.11-slim as build
-
-# Set working directory
-WORKDIR /app
-
-# Copy requirements file
-COPY requirements.txt .
-
-# Cài đặt dependencies trong bước này
-RUN pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir -r requirements.txt
-
-# Bước 2: Final image (image chạy ứng dụng)
+# Sử dụng image Python
 FROM python:3.11-slim
 
-# Set working directory
+# Cài đặt các phụ thuộc hệ thống
+RUN apt-get update && apt-get install -y libglib2.0-0
+
+# Tạo môi trường làm việc
 WORKDIR /app
 
-# Copy các dependencies đã cài đặt từ bước trước
-COPY --from=build /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
+# Copy requirements và cài đặt
+COPY requirements.txt .
+
+RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy mã nguồn vào
 COPY . .
@@ -26,5 +18,5 @@ COPY . .
 # Expose port 5000
 EXPOSE 5000
 
-# Chạy Flask's built-in server
-CMD ["python", "app.py"]
+# Sử dụng Gunicorn để chạy ứng dụng Flask
+CMD ["gunicorn", "-b", "0.0.0.0:5000", "app:app"]
