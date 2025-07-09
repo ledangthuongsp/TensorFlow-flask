@@ -1,21 +1,26 @@
 FROM python:3.11-slim
 
-# Install dependencies
-RUN apt-get update && apt-get install -y --no-install-recommends gcc && rm -rf /var/lib/apt/lists/*
+# Cài đặt thư viện hệ thống
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends gcc && \
+    rm -rf /var/lib/apt/lists/*
+
+# Cập nhật pip
+RUN pip install --upgrade pip
 
 # Set working directory
 WORKDIR /app
 
-# Copy requirements file
+# Copy requirements file vào container
 COPY requirements.txt .
 
-# Install Python dependencies
+# Cài đặt dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy app files into container
+# Copy app files vào container
 COPY . .
 
-# Install gunicorn
+# Cài gunicorn
 RUN pip install --no-cache-dir gunicorn
 
 # Expose port
