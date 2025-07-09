@@ -65,5 +65,5 @@ def detect_waste_type():
         logging.exception("Error in /detect")
         return jsonify({'error': str(e)}), 500
 
-if __name__ == '__main__':
-    app.run()
+# if __name__ == '__main__':
+#     app.run()
