@@ -3,7 +3,7 @@ import logging
 from PIL import Image
 import io
 import torch
-from transformers import AutoImageProcessor, SiglipForImageClassification
+from transformers import AutoImageProcessor, AutoModelForImageClassification
 
 # === Flask setup ===
 app = Flask(__name__)
@@ -11,7 +11,7 @@ logging.basicConfig(level=logging.INFO)
 
 # === Load SigLIP2 model from Hugging Face ===
 MODEL_NAME = "prithivMLmods/Augmented-Waste-Classifier-SigLIP2"
-model = SiglipForImageClassification.from_pretrained(MODEL_NAME)
+model = AutoModelForImageClassification.from_pretrained(MODEL_NAME)
 processor = AutoImageProcessor.from_pretrained(MODEL_NAME)
 
 # === Waste label mapping ===
