@@ -1,63 +1,66 @@
 from flask import Flask, request, jsonify
-import requests
 import logging
-from werkzeug.utils import secure_filename
-from inference_sdk import InferenceHTTPClient
 from PIL import Image
 import io
-import os
-import tempfile
+import torch
+from transformers import AutoImageProcessor, SiglipForImageClassification
 
+# === Flask setup ===
 app = Flask(__name__)
 logging.basicConfig(level=logging.INFO)
 
-# Initialize Roboflow client
-CLIENT = InferenceHTTPClient(
-    api_url="https://detect.roboflow.com",
-    api_key="QWEjrGQxLc7LJu13VuzO"
-)
+# === Load SigLIP2 model from Hugging Face ===
+MODEL_NAME = "prithivMLmods/Augmented-Waste-Classifier-SigLIP2"
+model = SiglipForImageClassification.from_pretrained(MODEL_NAME)
+processor = AutoImageProcessor.from_pretrained(MODEL_NAME)
+
+# === Waste label mapping ===
+LABELS = {
+    "0": "Battery", "1": "Biological", "2": "Cardboard", "3": "Clothes",
+    "4": "Glass", "5": "Metal", "6": "Paper", "7": "Plastic",
+    "8": "Shoes", "9": "Trash"
+}
 
 @app.route('/')
 def hello_world():
     return jsonify({'message': 'Hello World!'})
 
 @app.route('/detect', methods=['POST'])
-def detect_objects():
+def detect_waste_type():
     try:
         logging.info("Received a request to /detect")
 
         if 'file' not in request.files:
-            logging.error("No file part in the request")
             return jsonify({'error': 'No file part in the request'}), 400
-        
+
         file = request.files['file']
         if file.filename == '':
-            logging.error("No selected file")
             return jsonify({'error': 'No selected file'}), 400
-        
-        filename = secure_filename(file.filename)
-        file_content = file.read()
 
-        # Validate if the file is a valid image
+        # Read and validate image
+        file_content = file.read()
         try:
-            image = Image.open(io.BytesIO(file_content))
-            image.verify()  # Verify that it is, in fact, an image
+            image = Image.open(io.BytesIO(file_content)).convert("RGB")
         except Exception as e:
-            logging.error("Invalid image file")
             return jsonify({'error': 'Invalid image file', 'details': str(e)}), 400
 
-        # Write the file content to a temporary file
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".jpg") as temp_file:
-            temp_file.write(file_content)
-            temp_file_path = temp_file.name
+        # Process the image
+        inputs = processor(images=image, return_tensors="pt")
 
-        # Use InferenceHTTPClient to send the image to Roboflow
-        result = CLIENT.infer(temp_file_path, model_id="garbage-classification-3/2")
+        with torch.no_grad():
+            outputs = model(**inputs)
+            logits = outputs.logits
+            probs = torch.nn.functional.softmax(logits, dim=1).squeeze().tolist()
 
-        # Clean up the temporary file
-        os.remove(temp_file_path)
+        predictions = {LABELS[str(i)]: round(probs[i], 3) for i in range(len(probs))}
+        top_class = max(predictions, key=predictions.get)
 
-        return jsonify(result)
+        return jsonify({
+            "predicted_class": top_class,
+            "confidence": predictions[top_class],
+            "all_scores": predictions
+        })
+
     except Exception as e:
         logging.exception("Error in /detect")
         return jsonify({'error': str(e)}), 500
