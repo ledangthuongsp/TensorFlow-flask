@@ -1,36 +1,34 @@
-# Sử dụng image Python slim để giảm kích thước
-FROM python:3.11-slim as builder
+# Sử dụng base image Python slim để giảm kích thước image
+FROM python:3.11-slim
 
-# Cài đặt các dependencies cần thiết như gcc (nếu cần để build các package C++ như torch)
+# Thiết lập thư mục làm việc trong container
+WORKDIR /app
+
+# Cài đặt các dependencies hệ thống như gcc (để build các package C++ như torch)
 RUN apt-get update && \
     apt-get install -y --no-install-recommends gcc && \
     rm -rf /var/lib/apt/lists/*
 
-# Thiết lập thư mục làm việc
-WORKDIR /app
+# Cập nhật pip lên phiên bản mới nhất (tốt nhất khi cài đặt các thư viện)
+RUN pip install --upgrade pip
 
-# Copy requirements.txt vào container và cài đặt dependencies
-COPY requirements.txt .
+# Copy requirements.txt vào container
+COPY requirements.txt ./
 
-# Cài đặt dependencies Python (chỉ cài những gì cần thiết)
+# Cài đặt torch từ PyTorch's official wheels (CPU version)
+RUN pip install --no-cache-dir torch==2.3.0 -f https://download.pytorch.org/whl/cpu/torch_stable.html
+
+# Cài đặt các thư viện còn lại từ requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Tiến hành sao chép code vào final image
-FROM python:3.11-slim
-
-WORKDIR /app
-
-# Copy các package đã cài đặt từ builder vào final image
-COPY --from=builder /app /app
-
-# Copy toàn bộ source code vào container
+# Copy toàn bộ project vào container
 COPY . .
 
-# Cài đặt gunicorn, nếu chưa cài từ requirements.txt
-RUN pip install --no-cache-dir gunicorn
+# Dọn dẹp các gói không cần thiết để giảm kích thước image (optional)
+RUN apt-get remove -y gcc && apt-get autoremove -y
 
-# Expose port
+# Expose port 5000
 EXPOSE 5000
 
-# Chạy ứng dụng bằng gunicorn (WSGI server)
+# Sử dụng gunicorn để chạy app Flask
 CMD ["gunicorn", "-b", "0.0.0.0:${PORT}", "app:app"]
