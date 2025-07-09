@@ -12,7 +12,7 @@ RUN apt-get update && \
 # Upgrade pip to the latest version
 RUN pip install --upgrade pip
 
-# Copy requirements.txt to the container
+# Copy only requirements.txt first to leverage Docker cache
 COPY requirements.txt .
 
 # Install the dependencies (including torch and transformers)
@@ -32,7 +32,7 @@ RUN apt-get update && \
 # Copy the installed packages from the build stage to the final stage
 COPY --from=build /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
 
-# Copy the entire project (including model and app files) into the container
+# Copy the entire project (excluding unnecessary files)
 COPY . .
 
 # Expose the port that the app will run on
