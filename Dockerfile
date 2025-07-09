@@ -1,31 +1,42 @@
-# Sử dụng base image Python slim để giảm kích thước image
-FROM python:3.11-slim
+# Stage 1: Build stage
+FROM python:3.11-slim as build
 
-# Thiết lập thư mục làm việc trong container
+# Set the working directory inside the container
 WORKDIR /app
 
-# Cài đặt các dependencies hệ thống như gcc (để build các package C++ như torch)
+# Install system dependencies (like gcc) for building some packages
 RUN apt-get update && \
     apt-get install -y --no-install-recommends gcc && \
     rm -rf /var/lib/apt/lists/*
 
-# Cập nhật pip lên phiên bản mới nhất (tốt nhất khi cài đặt các thư viện)
+# Upgrade pip to the latest version
 RUN pip install --upgrade pip
 
-# Copy requirements.txt vào container
-COPY requirements.txt ./
+# Copy requirements.txt to the container
+COPY requirements.txt .
 
-# Cài đặt các thư viện từ requirements.txt (bao gồm torch)
+# Install the dependencies (including torch and transformers)
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy toàn bộ project vào container
+# Stage 2: Final image
+FROM python:3.11-slim
+
+# Set the working directory inside the container
+WORKDIR /app
+
+# Install only runtime dependencies (no gcc here)
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends && \
+    rm -rf /var/lib/apt/lists/*
+
+# Copy the installed packages from the build stage to the final stage
+COPY --from=build /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
+
+# Copy the entire project (including model and app files) into the container
 COPY . .
 
-# Dọn dẹp các gói không cần thiết để giảm kích thước image (optional)
-RUN apt-get remove -y gcc && apt-get autoremove -y
-
-# Expose port 5000
+# Expose the port that the app will run on
 EXPOSE 5000
 
-# Sử dụng gunicorn để chạy app Flask
-CMD ["gunicorn", "-b", "0.0.0.0:${PORT}", "app:app"]
+# Run the Flask app with Gunicorn
+CMD ["gunicorn", "-b", "0.0.0.0:${PORT}", "-w", "4", "app:app"]
