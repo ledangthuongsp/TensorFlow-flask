@@ -1,5 +1,5 @@
 Flask
 gunicorn
 pillow
-torch
+torch==2.3.0
 transformers
