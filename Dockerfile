@@ -18,7 +18,6 @@ FROM python:3.11-slim
 WORKDIR /app
 
 # Copy các dependencies đã cài đặt từ bước trước
-COPY --from=build /root/.cache /root/.cache
 COPY --from=build /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
 
 # Copy mã nguồn vào
