@@ -5,3 +5,4 @@ inference_sdk
 waitress
 torch==2.3.0+cpu
 transformers
+gunicorn==20.1.0
