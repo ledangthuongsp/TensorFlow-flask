@@ -1,42 +1,22 @@
-# Stage 1: Build stage
-FROM python:3.11-slim as build
-
-# Set the working directory inside the container
-WORKDIR /app
-
-# Install system dependencies (like gcc) for building some packages
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends gcc && \
-    rm -rf /var/lib/apt/lists/*
-
-# Upgrade pip to the latest version
-RUN pip install --upgrade pip
-
-# Copy only requirements.txt first to leverage Docker cache
-COPY requirements.txt .
-
-# Install the dependencies (including torch and transformers)
-RUN pip install --no-cache-dir -r requirements.txt
-
-# Stage 2: Final image
+# Use a more lightweight base image
 FROM python:3.11-slim
 
-# Set the working directory inside the container
+# Set working directory
 WORKDIR /app
 
-# Install only runtime dependencies (no gcc here)
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends && \
-    rm -rf /var/lib/apt/lists/*
+# Copy requirements file
+COPY requirements.txt .
 
-# Copy the installed packages from the build stage to the final stage
-COPY --from=build /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
+# Install dependencies in a single step to reduce image layers
+RUN pip install --upgrade pip && \
+    pip install --no-cache-dir -r requirements.txt
 
-# Copy the entire project (excluding unnecessary files)
+# Copy the rest of the application files
 COPY . .
 
-# Expose the port that the app will run on
-EXPOSE 5000
+# Clean up unnecessary files to reduce image size
+RUN rm -rf /root/.cache
 
-# Run the Flask app with Gunicorn
-CMD ["gunicorn", "-b", "0.0.0.0:${PORT}", "-w", "4", "app:app"]
+# Expose port and run app
+EXPOSE 5000
+CMD ["python", "app.py"]

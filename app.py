@@ -19,10 +19,13 @@ processor = None
 def load_model():
     global model, processor
     if model is None or processor is None:
-        logging.info("Loading model and processor...")
-        model = AutoModelForImageClassification.from_pretrained(MODEL_NAME)
-        processor = AutoImageProcessor.from_pretrained(MODEL_NAME)
-        logging.info("Model and processor loaded successfully.")
+        try:
+            logging.info("Loading model and processor...")
+            model = AutoModelForImageClassification.from_pretrained(MODEL_NAME)
+            processor = AutoImageProcessor.from_pretrained(MODEL_NAME)
+            logging.info("Model and processor loaded successfully.")
+        except Exception as e:
+            logging.error(f"Error loading model: {str(e)}")
 
 load_model()
 
@@ -82,4 +85,4 @@ if __name__ == '__main__':
     # Load model once before running the app
     port = int(os.environ.get("PORT", 5000))  # Default to 5000 if PORT is not set
     logging.info(f"Starting Flask app on port {port}")
-    app.run(host='0.0.0.0', port=port)
+    app.run(host='0.0.0.0', port=port, debug=False)
