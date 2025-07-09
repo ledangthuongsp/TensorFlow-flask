@@ -3,5 +3,5 @@ requests
 pillow
 inference_sdk
 waitress
-torch
+torch==2.3.0+cpu
 transformers
